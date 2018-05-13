@@ -788,7 +788,7 @@ class JsdocsPHP(JsdocsParser):
     def getArgType(self, arg):
 
         res = re.search(
-            '(?P<type>' + self.settings['typeIdentifier'] + ')?'
+            '(?P<type>\\??' + self.settings['typeIdentifier'] + ')?'
             + '\\s*(?P<name>' + self.settings['varIdentifier'] + ')'
             + '(\\s*=\\s*(?P<val>.*))?',
             arg
@@ -810,10 +810,16 @@ class JsdocsPHP(JsdocsParser):
                     return argType
 
                 # function fnc_name(type $name = null)
+                if argValType == 'null':
+                    return 'null|' + argType
+
                 return argType + "|" + argValType
 
             # function fnc_name(type $name)
             if (argType):
+                if argType[:1] == '?':
+                    return 'null|' + argType[1:]
+
                 return argType
 
             # function fnc_name($name = value)
@@ -880,6 +886,8 @@ class JsdocsPHP(JsdocsParser):
                 return 'bool' if shortPrimitives else 'boolean'
 
         if (retval):
+            if retval[:1] == '?':
+                return 'null|' + retval[1:]
             return retval
 
         return JsdocsParser.getFunctionReturnType(self, name, retval)
