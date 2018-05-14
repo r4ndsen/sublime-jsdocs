@@ -777,7 +777,7 @@ class JsdocsPHP(JsdocsParser):
             # (arg1, arg2)
             + '\\s*\\(\\s*(?P<args>.*)\\)'
             # optional return type
-            + '(\\s*?:\\s*(?P<retval>' + self.settings['typeIdentifier'] + '))?',
+            + '(\\s*?:\\s*(?P<retval>\\??' + self.settings['typeIdentifier'] + '))?',
             line
         )
         if not res:
@@ -785,8 +785,14 @@ class JsdocsPHP(JsdocsParser):
 
         return (res.group('name'), res.group('args'), res.group('retval'))
 
-    def getArgType(self, arg):
+    def withNull(self, arg, allowNull):
+        if allowNull:
+            nullLast = self.viewSettings.get('jsdocs_null_last') or False
+            return arg + '|null' if nullLast else 'null|' + arg
 
+        return arg
+
+    def getArgType(self, arg):
         res = re.search(
             '(?P<type>\\??' + self.settings['typeIdentifier'] + ')?'
             + '\\s*(?P<name>' + self.settings['varIdentifier'] + ')'
@@ -795,10 +801,13 @@ class JsdocsPHP(JsdocsParser):
         );
 
         if (res):
-
             argType = res.group("type")
             argName = res.group("name")
             argVal = res.group("val")
+
+            allowNull = argType[:1] == '?' or False
+            if (allowNull):
+                argType = argType[1:]
 
             # function fnc_name(type $name = val)
             if (argType and argVal):
@@ -807,20 +816,17 @@ class JsdocsPHP(JsdocsParser):
                 # function fnc_name(array $x = [])
                 argValType = self.guessTypeFromValue(argVal)
                 if argType == argValType:
-                    return argType
+                    return self.withNull(argType, allowNull)
 
                 # function fnc_name(type $name = null)
                 if argValType == 'null':
-                    return 'null|' + argType
+                    return self.withNull(argType, True)
 
                 return argType + "|" + argValType
 
-            # function fnc_name(type $name)
             if (argType):
-                if argType[:1] == '?':
-                    return 'null|' + argType[1:]
-
-                return argType
+                # function fnc_name(type $name)
+                return self.withNull(argType, allowNull)
 
             # function fnc_name($name = value)
             if (argVal):
@@ -886,8 +892,9 @@ class JsdocsPHP(JsdocsParser):
                 return 'bool' if shortPrimitives else 'boolean'
 
         if (retval):
-            if retval[:1] == '?':
-                return 'null|' + retval[1:]
+            if (retval[:1] == '?'):
+                return self.withNull(retval[1:], True)
+
             return retval
 
         return JsdocsParser.getFunctionReturnType(self, name, retval)
