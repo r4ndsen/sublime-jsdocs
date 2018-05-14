@@ -135,5 +135,9 @@
   // If set to true, typing /**<space> will open an inline docblock
   "jsdocs_quick_open_inline": true,
 
+  // Decide whether you want to have null before or after the type of a variable
+  // By default 'null' will be placed after the type "array|null"
+  "jsdocs_null_last": true,
+
   "jsdocs_development_mode": false
 }
